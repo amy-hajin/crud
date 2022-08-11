@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/css/home/ranklist.css" />
+    <script src="js/home/ranklist.js" defer></script>
+
+    <title>rank</title>
+  </head>
+  <div class="login-page">
+    <!-- <button id="sortBtt">정렬</button> -->
+    <div class="form">
+      <table style="border: 1px" id="dynamicTable">
+        <thead>
+          <tr>
+            <td><strong>Rank</strong></td>
+            <td><strong>Name</strong></td>
+            <td><strong>score</strong></td>
+            <td><strong>note</strong></td>
+            <td><strong>delete</strong></td>
+          </tr>
+        </thead>
+        <tbody id="table_body"></tbody>
+        <button id="addBtt">추가</button>
+      </table>
+    </div>
+  </div>
+  <style>
+    .editable-cell a {
+      display: none;
+    }
+    .editable-cell:hover a {
+      display: inline;
+    }
+  </style>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  ></script>
+  <script type="text/javascript">
+    let rankData = <%- JSON.stringify(data); %>;
+    const tableEl = $("#dynamicTable");
+    const tbodyEl = $("#table_body");
+
+    rankData.forEach((item, index) => {
+      tbodyEl.append(`
+      <tr>
+        <td>${index + 1}</td>
+        <td class="editable-cell">
+          ${item.name}
+          <a href="#" onclick="changeUsername(${item.id})">edit</a>
+        </td>
+        <td class="editable-cell">${item.score}<a href="#" onclick="changeUsername(${item.id})">edit</a></td>
+        <td class="editable-cell">${item.note}<a href="#" onclick="changeUsername(${item.id})">edit</a></td>
+        <td><button onclick="deleteUser(${item.id})">delete</button></td>
+        </tr>
+      `)
+    });
+
+    $("#addBtt").click(function(e) {
+      e.preventDefault();
+      addUser();
+    })
+
+    function refreshRankTable() {
+      const tbodyEl = $("#table_body");
+
+      tbodyEl.empty();
+      rankData.sort(function(a, b){
+        if (a.score > b.score) {
+          return -1;
+        }
+        if (a.score < b.score) {
+          return 1;
+        }
+        return 0;
+      })
+      rankData.forEach((item, index) => {
+        tbodyEl.append(`
+        <tr>
+          <td>${index + 1}</td>
+          <td class="editable-cell">
+          ${item.name}
+          <a href="#" onclick="changeUsername(${item.id})">edit</a>
+        </td>
+        <td class="editable-cell">${item.score}<a href="#" onclick="changeUsername(${item.id})">edit</a></td>
+        <td class="editable-cell">${item.note}<a href="#" onclick="changeUsername(${item.id})">edit</a></td>
+        <td><button onclick="deleteUser(${item.id})">delete</button></td>
+          </tr>
+        `)
+      })
+    }
+
+    function addUser() {
+      const newUser = {
+        name: "New User",
+        score: 0,
+        note: ""
+      };
+
+      $.ajax({
+        method: 'POST',
+        url: '/rankCreate',
+        data: newUser
+      }).done(function (data) {
+        console.log('success', data);
+        newUser.id = data.insertedId;
+        rankData.push(newUser);
+        refreshRankTable();
+      }).fail(function (data) {
+        alert("추가에 실패했습니다. 다시 시도해주세요.");
+      });
+    }
+
+    // 삭제
+    function deleteUser(id) {
+      if (confirm("정말로 삭제하시겠습니까?")) {
+        $.ajax({
+          method: 'DELETE',
+          url: '/rankDelete/' + id,
+        }).done(function (data) {
+          rankData = rankData.filter(data => data.id !== id);
+          refreshRankTable();
+        }).fail(function (data) {
+          alert("삭제에 실패했습니다. 다시 시도해주세요.");
+        });
+      }
+    }
+
+    // 수정 -이름, 점수, 노트
+    function changeUsername(id) {
+      const newName = prompt("새로운 이름을 입력해주세요.");
+
+      if (!newName) {
+        alert("유효하지 않은 이름입니다.");
+
+        return;
+      }
+
+      $.ajax({
+        method: 'PATCH',
+        url: '/rankUpdate/' + id,
+        accept: "application/json",
+        contentType: "application/json; charset=utf-8",
+        data: JSON.stringify({
+          name: newName
+        }),
+        dataType: "json"
+      }).done(function (data) {
+          // rankData[userIndex].name = newName; // UPDATE ranking SET name = ? WHERE id = ? << api 쪽 값을 확인하기 위함
+          refreshRankTable();
+        }).fail(function (data) {
+          alert("삭제에 실패했습니다. 다시 시도해주세요.");
+        });
+    }
+
+
+    // function changeUsername(id) {
+    //   const newName = prompt("새로운 이름을 입력해주세요.");
+
+    //   // const parsedScore = parseInt(newName);
+
+    //   // if (isNaN(parsedScore)) {
+    //   //   alert('숫자만 입력 가능합니다.');
+
+    //   //   return;
+    //   // }
+
+
+    //   if (!newName) {
+    //     alert("유효하지 않은 이름입니다.");
+
+    //     return;
+    //   }
+
+    //   $.ajax({
+    //     method: 'PATCH',
+    //     url: '/rankUpdate/' + id,
+    //     accept: "application/json",
+    //     contentType: "application/json; charset=utf-8",
+    //     data: JSON.stringify({
+    //       name: newName
+    //     }),
+    //     dataType: "json"
+    //   }).done(function (data) {
+    //       rankData[userIndex].name = newName;
+    //       refreshRankTable();
+    //     }).fail(function (data) {
+    //       alert("삭제에 실패했습니다. 다시 시도해주세요.");
+    //     });
+    // }
+  </script>
+</html>

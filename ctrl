@@ -1,0 +1,114 @@
+"use strict";
+
+const { json } = require("body-parser");
+const { request, response } = require("express");
+const db = require("../../config/db");
+const User = require("../../models/User");
+const UserStorage = require("../../models/UserStorage");
+
+const output = {
+  home: (req, res) => {
+    res.render("home/rank");
+  },
+  login: (req, res) => {
+    res.render("home/login");
+  },
+  register: (req, res) => {
+    res.render("home/register");
+  },
+  ranklist: (req, res) => {
+    const query = "SELECT * FROM ranking ORDER BY score DESC;";
+    db.query(query, function (err, result, field) {
+      res.render("home/ranklist", { data: result });
+    });
+  },
+};
+
+const process = {
+  login: async (req, res) => {
+    const user = new User(req.body);
+    const response = await user.login();
+
+    req.session.num = response.num;
+    req.session.save();
+
+    console.log(req.session);
+
+    return res.json(response);
+  },
+  register: async (req, res) => {
+    const user = new User(req.body);
+    const response = await user.register();
+    return res.json(response);
+  },
+
+  rankAdd: async (req, res) => {
+    const user = new User(req.body);
+    const response = await user.rankAdd();
+    return res.json(response);
+  },
+  rankUpdate: (req, res) => {
+    const id = req.params.id;
+    const ranking = req.body;
+
+    let query = "UPDATE ranking SET ";
+    if (ranking.name) {
+      query += "name = ?";
+    }
+
+    if (ranking.note) {
+      query += "note = ?";
+    }
+
+    const score = Number(ranking.score);
+    if (!isNaN(score)) {
+      query += "score = ?";
+    }
+
+    query += " WHERE id = ?";
+
+    // console.log(query);
+
+    db.query(
+      query,
+      [ranking.name, ranking.score, ranking.note, id],
+      (err, result) => {
+        if (!err) {
+          if (result.affctedRows == 0) {
+            return res
+              .status(404)
+              .json({ message: "Product id does not found" });
+          }
+          return res
+            .status(200)
+            .json({ message: "Product Updated Successfully" });
+        } else {
+          return res.status(500).json(err);
+        }
+      }
+    );
+  },
+  rankDelete: (req, res) => {
+    const id = req.params.id;
+    const query = "DELETE FROM ranking WHERE id = ?;";
+    db.query(query, [id], (err, result) => {
+      if (!err) {
+        if (result.affctedRows == 0) {
+          return res
+            .status(404)
+            .json({ message: "Product id does not found " });
+        }
+        return res
+          .status(200)
+          .json({ message: "Prouduct Delete successfully" });
+      } else {
+        return res.status(500).json(err);
+      }
+    });
+  },
+};
+
+module.exports = {
+  output,
+  process,
+};
